@@ -67,7 +67,6 @@ describe("npmInterceptor minimum package age", async () => {
     "https://registry.npmjs.org/@babel/core",
     "https://registry.npmjs.org/@types/node",
     // With query parameters
-    "https://registry.npmjs.org/lodash?write=true",
     "https://registry.npmjs.org/@babel/core?param=value&other=test",
     // With fragments
     "https://registry.npmjs.org/lodash#readme",
@@ -148,6 +147,33 @@ describe("npmInterceptor minimum package age", async () => {
       assert.equal(requestInterceptor.modifiesResponse(), false);
     });
   }
+
+  it("Should leave package metadata unchanged for npm write requests", async () => {
+    minimumPackageAgeSettings = 5;
+    skipMinimumPackageAgeSetting = false;
+    minimumPackageAgeExclusionsSetting = [];
+    const packageUrl = "https://registry.npmjs.org/lodash?write=true";
+    const originalBody = JSON.stringify({
+      name: "lodash",
+      ["dist-tags"]: { latest: "2.0.0" },
+      versions: { ["1.0.0"]: {}, ["2.0.0"]: {} },
+      time: {
+        created: getDate(-365 * 24),
+        modified: getDate(-1),
+        ["1.0.0"]: getDate(-100),
+        ["2.0.0"]: getDate(-1), // Would normally be filtered
+      },
+    });
+
+    const interceptor = npmInterceptorForUrl(packageUrl);
+    const requestHandler = await interceptor.handleRequest(packageUrl);
+
+    assert.equal(requestHandler.modifiesResponse(), false);
+    assert.equal(
+      await runModifyNpmInfoRequest(packageUrl, originalBody),
+      originalBody
+    );
+  });
 
   it("Should remove packages older than the treshold", async () => {
     minimumPackageAgeSettings = 5;

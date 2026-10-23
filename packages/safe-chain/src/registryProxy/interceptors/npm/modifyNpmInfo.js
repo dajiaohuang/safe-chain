@@ -23,6 +23,14 @@ export function modifyNpmInfoRequestHeaders(headers) {
  * @returns {boolean}
  */
 export function isPackageInfoUrl(url) {
+  // npm uses ?write=true when it reads package metadata for a write operation
+  // such as unpublish. Preserve that response verbatim so age filtering cannot
+  // change the metadata npm sends back to the registry.
+  const query = url.split("#")[0].split("?")[1];
+  if (query && new URLSearchParams(query).getAll("write").includes("true")) {
+    return false;
+  }
+
   // Remove query string and fragment to get the actual path
   const urlWithoutParams = url.split("?")[0].split("#")[0];
 
